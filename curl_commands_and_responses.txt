@@ -1,0 +1,373 @@
+==============================================================
+ LAB EQUIPMENT API — CURL COMMANDS & EXPECTED RESPONSES
+ All commands assume server running at http://localhost:3000
+==============================================================
+
+--------------------------------------------------------------
+TASK 3: CATEGORY CRUD
+--------------------------------------------------------------
+
+--- GET /categories (list all, ordered by name) ---
+curl -X GET http://localhost:3000/categories
+
+Expected 200:
+[
+  {"id":4,"name":"Computing","created_at":"...","updated_at":"..."},
+  {"id":3,"name":"Electronics","created_at":"...","updated_at":"..."},
+  {"id":2,"name":"Networking","created_at":"...","updated_at":"..."},
+  {"id":1,"name":"Optics","created_at":"...","updated_at":"..."}
+]
+
+--- GET /categories/:id (show one with equipment count) ---
+curl -X GET http://localhost:3000/categories/1
+
+Expected 200:
+{
+  "id": 1,
+  "name": "Computing",
+  "created_at": "...",
+  "updated_at": "...",
+  "equipment_count": 2
+}
+
+--- POST /categories (create) ---
+curl -X POST http://localhost:3000/categories \
+  -H "Content-Type: application/json" \
+  -d '{"category": {"name": "Robotics"}}'
+
+Expected 201:
+{"id":5,"name":"Robotics","created_at":"...","updated_at":"..."}
+
+--- PATCH /categories/:id (update) ---
+curl -X PATCH http://localhost:3000/categories/5 \
+  -H "Content-Type: application/json" \
+  -d '{"category": {"name": "Advanced Robotics"}}'
+
+Expected 200:
+{"id":5,"name":"Advanced Robotics","created_at":"...","updated_at":"..."}
+
+--- DELETE /categories/:id (delete with no equipment) ---
+curl -X DELETE http://localhost:3000/categories/5
+
+Expected 204: (empty body)
+
+--- DELETE /categories/:id (category that still has equipment) ---
+curl -X DELETE http://localhost:3000/categories/1
+
+Expected 409:
+{"error":"Cannot delete category. 2 equipment items still belong to it."}
+
+--- GET /categories/999 (not found) ---
+curl -X GET http://localhost:3000/categories/999
+
+Expected 404:
+{"error":"Category not found"}
+
+--------------------------------------------------------------
+TASK 4: EQUIPMENT CRUD WITH FILTERING
+--------------------------------------------------------------
+
+--- GET /equipment (list all with category name) ---
+curl -X GET http://localhost:3000/equipment
+
+Expected 200:
+[
+  {
+    "id": 1,
+    "name": "Arduino Mega Kit",
+    "serial_number": "ARD-001",
+    "status": "available",
+    "category_id": 4,
+    "category_name": "Electronics",
+    ...
+  },
+  ...
+]
+
+--- GET /equipment?status=available (filter by status) ---
+curl -X GET "http://localhost:3000/equipment?status=available"
+
+Expected 200: (only equipment with status=available, ordered by name)
+
+--- GET /equipment?status=maintenance ---
+curl -X GET "http://localhost:3000/equipment?status=maintenance"
+
+Expected 200: (only maintenance equipment)
+
+--- GET /equipment/:id (show one with category and maintenance records) ---
+curl -X GET http://localhost:3000/equipment/1
+
+Expected 200:
+{
+  "id": 1,
+  "name": "Dell Laptop Pro",
+  "serial_number": "LAP-001",
+  "status": "available",
+  "category_id": 1,
+  "category": {"id": 1, "name": "Computing", ...},
+  "maintenance_records": [
+    {
+      "id": 1,
+      "description": "Replaced thermal paste and cleaned cooling fan.",
+      "performed_at": "...",
+      "equipment_id": 1,
+      ...
+    }
+  ]
+}
+
+--- POST /equipment (create) ---
+curl -X POST http://localhost:3000/equipment \
+  -H "Content-Type: application/json" \
+  -d '{"equipment": {"name": "HP Workstation", "serial_number": "HPS-001", "status": "available", "category_id": 1}}'
+
+Expected 201:
+{
+  "id": 9,
+  "name": "HP Workstation",
+  "serial_number": "HPS-001",
+  "status": "available",
+  "category_id": 1,
+  "category_name": "Computing",
+  ...
+}
+
+--- PATCH /equipment/:id (update) ---
+curl -X PATCH http://localhost:3000/equipment/9 \
+  -H "Content-Type: application/json" \
+  -d '{"equipment": {"status": "in_use"}}'
+
+Expected 200:
+{"id": 9, ..., "status": "in_use", "category_name": "Computing", ...}
+
+--- DELETE /equipment/:id ---
+curl -X DELETE http://localhost:3000/equipment/9
+
+Expected 204: (empty body, cascades maintenance records)
+
+--- GET /equipment/999 (not found) ---
+curl -X GET http://localhost:3000/equipment/999
+
+Expected 404:
+{"error":"Equipment not found"}
+
+--------------------------------------------------------------
+TASK 5: MAINTENANCE RECORD CRUD WITH FILTERING
+--------------------------------------------------------------
+
+--- GET /maintenance_records (list all, ordered by performed_at desc) ---
+curl -X GET http://localhost:3000/maintenance_records
+
+Expected 200:
+[
+  {
+    "id": 4,
+    "description": "Full lens cleaning and calibration check.",
+    "performed_at": "...",
+    "equipment_id": 4,
+    "equipment_name": "Digital Microscope",
+    ...
+  },
+  ...
+]
+
+--- GET /maintenance_records?equipment_id=3 (filter by equipment) ---
+curl "http://localhost:3000/maintenance_records?equipment_id=3"
+
+Expected 200: (only records for equipment with id=3)
+
+--- GET /maintenance_records/:id ---
+curl -X GET http://localhost:3000/maintenance_records/1
+
+Expected 200:
+{
+  "id": 1,
+  "description": "Replaced thermal paste and cleaned cooling fan.",
+  "performed_at": "...",
+  "equipment_id": 1,
+  "equipment_name": "Dell Laptop Pro",
+  ...
+}
+
+--- POST /maintenance_records (create) ---
+curl -X POST http://localhost:3000/maintenance_records \
+  -H "Content-Type: application/json" \
+  -d '{"maintenance_record": {"description": "Replaced power supply unit.", "performed_at": "2024-03-01T10:00:00Z", "equipment_id": 5}}'
+
+Expected 201:
+{
+  "id": 6,
+  "description": "Replaced power supply unit.",
+  "performed_at": "2024-03-01T10:00:00.000Z",
+  "equipment_id": 5,
+  "equipment_name": "Cisco Router",
+  ...
+}
+
+--- PATCH /maintenance_records/:id ---
+curl -X PATCH http://localhost:3000/maintenance_records/6 \
+  -H "Content-Type: application/json" \
+  -d '{"maintenance_record": {"description": "Replaced power supply unit and tested all ports."}}'
+
+Expected 200:
+{"id": 6, "description": "Replaced power supply unit and tested all ports.", ...}
+
+--- DELETE /maintenance_records/:id ---
+curl -X DELETE http://localhost:3000/maintenance_records/6
+
+Expected 204: (empty body)
+
+--- GET /maintenance_records/999 (not found) ---
+curl -X GET http://localhost:3000/maintenance_records/999
+
+Expected 404:
+{"error":"Maintenance record not found"}
+
+--------------------------------------------------------------
+TASK 6: BUSINESS RULES — VALIDATION TESTS
+--------------------------------------------------------------
+
+--- Rule 1: Serial number format invalid ---
+curl -X POST http://localhost:3000/equipment \
+  -H "Content-Type: application/json" \
+  -d '{"equipment": {"name": "Test Laptop", "serial_number": "lap-001", "status": "available", "category_id": 1}}'
+
+Expected 422:
+{"errors":["Serial number must match format XXX-NNN (e.g. LAP-001)"]}
+
+curl -X POST http://localhost:3000/equipment \
+  -H "Content-Type: application/json" \
+  -d '{"equipment": {"name": "Test Laptop", "serial_number": "LAP01", "status": "available", "category_id": 1}}'
+
+Expected 422:
+{"errors":["Serial number must match format XXX-NNN (e.g. LAP-001)"]}
+
+curl -X POST http://localhost:3000/equipment \
+  -H "Content-Type: application/json" \
+  -d '{"equipment": {"name": "Test Laptop", "serial_number": "LP-001", "status": "available", "category_id": 1}}'
+
+Expected 422:
+{"errors":["Serial number must match format XXX-NNN (e.g. LAP-001)"]}
+
+--- Rule 2: Maintenance date in future ---
+curl -X POST http://localhost:3000/maintenance_records \
+  -H "Content-Type: application/json" \
+  -d '{"maintenance_record": {"description": "Future maintenance", "performed_at": "2099-01-01T10:00:00Z", "equipment_id": 1}}'
+
+Expected 422:
+{"errors":["Performed at cannot be in the future"]}
+
+--- Rule 3: Category name too short ---
+curl -X POST http://localhost:3000/categories \
+  -H "Content-Type: application/json" \
+  -d '{"category": {"name": "AB"}}'
+
+Expected 422:
+{"errors":["Name must be at least 3 characters"]}
+
+curl -X POST http://localhost:3000/categories \
+  -H "Content-Type: application/json" \
+  -d '{"category": {"name": "A"}}'
+
+Expected 422:
+{"errors":["Name must be at least 3 characters"]}
+
+--- Rule 4: Equipment name too short or no letters ---
+curl -X POST http://localhost:3000/equipment \
+  -H "Content-Type: application/json" \
+  -d '{"equipment": {"name": "AB", "serial_number": "TST-001", "status": "available", "category_id": 1}}'
+
+Expected 422:
+{"errors":["Name is too short (minimum is 3 characters)"]}
+
+curl -X POST http://localhost:3000/equipment \
+  -H "Content-Type: application/json" \
+  -d '{"equipment": {"name": "123", "serial_number": "TST-001", "status": "available", "category_id": 1}}'
+
+Expected 422:
+{"errors":["Name must contain at least one letter"]}
+
+curl -X POST http://localhost:3000/equipment \
+  -H "Content-Type: application/json" \
+  -d '{"equipment": {"name": "!!!", "serial_number": "TST-001", "status": "available", "category_id": 1}}'
+
+Expected 422:
+{"errors":["Name must contain at least one letter"]}
+
+--------------------------------------------------------------
+TASK 7: EDGE CASES
+--------------------------------------------------------------
+
+--- 1. Create equipment with non-existent category_id: 999 ---
+curl -X POST http://localhost:3000/equipment \
+  -H "Content-Type: application/json" \
+  -d '{"equipment": {"name": "Ghost Device", "serial_number": "GHT-001", "status": "available", "category_id": 999}}'
+
+Expected 422:
+{"errors":["Category must exist"]}
+
+--- 2. Create equipment with duplicate serial number ---
+curl -X POST http://localhost:3000/equipment \
+  -H "Content-Type: application/json" \
+  -d '{"equipment": {"name": "Another Laptop", "serial_number": "LAP-001", "status": "available", "category_id": 1}}'
+
+Expected 422:
+{"errors":["Serial number has already been taken"]}
+
+--- 3. Create equipment with invalid status "broken" ---
+curl -X POST http://localhost:3000/equipment \
+  -H "Content-Type: application/json" \
+  -d '{"equipment": {"name": "Broken Device", "serial_number": "BRK-001", "status": "broken", "category_id": 1}}'
+
+Expected 422:
+{"errors":["Status broken is not a valid status. Use: available, in_use, maintenance"]}
+
+--- 4. Create category with duplicate name ---
+curl -X POST http://localhost:3000/categories \
+  -H "Content-Type: application/json" \
+  -d '{"category": {"name": "Computing"}}'
+
+Expected 422:
+{"errors":["Name has already been taken"]}
+
+--- 5. Create maintenance record with non-existent equipment_id: 999 ---
+curl -X POST http://localhost:3000/maintenance_records \
+  -H "Content-Type: application/json" \
+  -d '{"maintenance_record": {"description": "Ghost maintenance", "performed_at": "2024-01-01T10:00:00Z", "equipment_id": 999}}'
+
+Expected 422:
+{"errors":["Equipment must exist"]}
+
+--- 6. DELETE /categories/1 when equipment belongs to it ---
+curl -X DELETE http://localhost:3000/categories/1
+
+Expected 409:
+{"error":"Cannot delete category. 2 equipment items still belong to it."}
+
+--- 7. GET /categories/999 (not found) ---
+curl -X GET http://localhost:3000/categories/999
+
+Expected 404:
+{"error":"Category not found"}
+
+--- 8. GET /equipment/999 (not found) ---
+curl -X GET http://localhost:3000/equipment/999
+
+Expected 404:
+{"error":"Equipment not found"}
+
+--- 9. PATCH /categories/999 (not found) ---
+curl -X PATCH http://localhost:3000/categories/999 \
+  -H "Content-Type: application/json" \
+  -d '{"category": {"name": "Ghost Category"}}'
+
+Expected 404:
+{"error":"Category not found"}
+
+--- 10. POST /maintenance_records with future performed_at ---
+curl -X POST http://localhost:3000/maintenance_records \
+  -H "Content-Type: application/json" \
+  -d '{"maintenance_record": {"description": "Scheduled service", "performed_at": "2099-12-31T00:00:00Z", "equipment_id": 1}}'
+
+Expected 422:
+{"errors":["Performed at cannot be in the future"]}
